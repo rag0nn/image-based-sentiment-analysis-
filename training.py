@@ -24,7 +24,7 @@ import tqdm
 import os
 import logging
 from datetime import datetime
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from structs import *
@@ -40,9 +40,11 @@ CSV_PATH = f"{DATA_ROOT}/AffectNet41k_FlameRender_Descriptions_Images/Modified_p
 CHECKPOINT_PATH = "training_checkpoint.pth"
 
 BATCH_SIZE = 24
-NUM_EPOCHS = 2
+NUM_EPOCHS = 5
 LEARNING_RATE = 0.001
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+EXTRA_EPOCH_COUNT = 3
 
 def setup_logging():
     """Logging'i ayarla - konsol ve dosya çıkışı"""
@@ -256,8 +258,8 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
     """Bir eğitim epoch'unu gerçekleştir"""
     model.train() # modeli eğitim moduna al
     running_loss = 0.0
-    correct = 0
-    total = 0
+    all_preds = []
+    all_labels = []
     
     pbar = tqdm.tqdm(train_loader, desc="Eğitim", leave=False)
     for images, labels in pbar:
@@ -275,23 +277,24 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
         # İstatistikler
         running_loss += loss.item() * images.size(0)
         _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
+        
+        all_preds.extend(predicted.cpu().numpy())
+        all_labels.extend(labels.cpu().numpy())
         
         pbar.set_postfix({'loss': loss.item()})
     
-    avg_loss = running_loss / total
-    accuracy = 100 * correct / total
+    avg_loss = running_loss / len(all_labels)
+    macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
     
-    return avg_loss, accuracy
+    return avg_loss, macro_f1
 
 
 def validate(model, val_loader, criterion, device):
     """Modeli doğrudan"""
     model.eval()
     running_loss = 0.0
-    correct = 0
-    total = 0
+    all_preds = []
+    all_labels = []
     
     with torch.no_grad():
         for images, labels in tqdm.tqdm(val_loader, desc="Doğrulama", leave=False):
@@ -302,27 +305,28 @@ def validate(model, val_loader, criterion, device):
             
             running_loss += loss.item() * images.size(0)
             _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
     
-    avg_loss = running_loss / total
-    accuracy = 100 * correct / total
+    avg_loss = running_loss / len(all_labels)
+    macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
     
-    return avg_loss, accuracy
+    return avg_loss, macro_f1
 
 
-def save_checkpoint(checkpoint_path, model, optimizer, epoch, best_val_acc, 
-                   train_losses, train_accs, val_losses, val_accs):
+def save_checkpoint(checkpoint_path, model, optimizer, epoch, best_val_f1, 
+                   train_losses, train_f1s, val_losses, val_f1s):
     """Checkpoint'i kaydet (model + optimizer + geçmiş)"""
     torch.save({
         'epoch': epoch,
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
-        'best_val_acc': best_val_acc,
+        'best_val_f1': best_val_f1,
         'train_losses': train_losses,
-        'train_accs': train_accs,
+        'train_f1s': train_f1s,
         'val_losses': val_losses,
-        'val_accs': val_accs,
+        'val_f1s': val_f1s,
     }, checkpoint_path)
     logging.debug(f"[INFO] Checkpoint kaydedildi: {checkpoint_path} (Epoch: {epoch})")
 
@@ -371,20 +375,20 @@ def load_checkpoint(checkpoint_path, model, optimizer, device):
             logging.warning(f"Optimizer state yüklenemedi, yeniden başlanacak: {e}")
     
     start_epoch = checkpoint.get('epoch', 0)
-    best_val_acc = checkpoint.get('best_val_acc', 0)
+    best_val_f1 = checkpoint.get('best_val_f1', 0)
     train_losses = checkpoint.get('train_losses', [])
-    train_accs = checkpoint.get('train_accs', [])
+    train_f1s = checkpoint.get('train_f1s', [])
     val_losses = checkpoint.get('val_losses', [])
-    val_accs = checkpoint.get('val_accs', [])
+    val_f1s = checkpoint.get('val_f1s', [])
     logging.info(f"Checkpoint yüklendi: {checkpoint_path}")
-    logging.info(f"Önceki En İyi Doğruluk: {best_val_acc:.2f}%")
+    logging.info(f"Önceki En İyi Macro F1: {best_val_f1:.4f}")
     logging.info(f"Eğitim {start_epoch + 1}. epoch'tan devam edecek...")
     
     # CUDA bellek temizliği checkpoint yüklemesi sonrası
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     
-    return start_epoch, best_val_acc, train_losses, train_accs, val_losses, val_accs
+    return start_epoch, best_val_f1, train_losses, train_f1s, val_losses, val_f1s
 
 
 def test(model, test_loader, device):
@@ -409,8 +413,9 @@ def test(model, test_loader, device):
             all_labels.extend(labels.cpu().numpy())
     
     accuracy = 100 * correct / total
+    macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
     
-    return accuracy, all_preds, all_labels
+    return macro_f1, accuracy, all_preds, all_labels
 
 def run():
     global PATHBASE
@@ -443,7 +448,7 @@ def run():
         resume_training = user_input in ['e', 'evet', 'y', 'yes']
     
     start_epoch = 0
-    best_val_acc = 0
+    best_val_f1 = 0.0
     
     # Veri Hazırlığı
     logging.info("\n[ADIM 1] Veri Hazırlanıyor...")
@@ -483,12 +488,12 @@ def run():
     
     # Checkpoint'ten devam ettir
     train_losses = []
-    train_accs = []
+    train_f1s = []
     val_losses = []
-    val_accs = []
+    val_f1s = []
     
     if resume_training:
-        start_epoch, best_val_acc, train_losses, train_accs, val_losses, val_accs = \
+        start_epoch, best_val_f1, train_losses, train_f1s, val_losses, val_f1s = \
             load_checkpoint(CHECKPOINT_PATH, model, optimizer, DEVICE)
     
     # ========== EĞİTİM (DÖNGÜ) ==========
@@ -505,28 +510,28 @@ def run():
             logging.info(f"{'='*80}")
             
             # Eğitim
-            train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, DEVICE)
+            train_loss, train_f1 = train_epoch(model, train_loader, criterion, optimizer, DEVICE)
             train_losses.append(train_loss)
-            train_accs.append(train_acc)
+            train_f1s.append(train_f1)
             
             # Doğrulama
-            val_loss, val_acc = validate(model, val_loader, criterion, DEVICE)
+            val_loss, val_f1 = validate(model, val_loader, criterion, DEVICE)
             val_losses.append(val_loss)
-            val_accs.append(val_acc)
+            val_f1s.append(val_f1)
             
             # Detaylı log
-            logging.info(f"  Eğitim   - Loss: {train_loss:.4f}, Doğruluk: {train_acc:.2f}%")
-            logging.info(f"  Doğrulama - Loss: {val_loss:.4f}, Doğruluk: {val_acc:.2f}%")
+            logging.info(f"  Eğitim   - Loss: {train_loss:.4f}, Macro F1: {train_f1:.4f}")
+            logging.info(f"  Doğrulama - Loss: {val_loss:.4f}, Macro F1: {val_f1:.4f}")
             
             # En iyi modeli kaydet
-            if val_acc > best_val_acc:
-                best_val_acc = val_acc
+            if val_f1 > best_val_f1:
+                best_val_f1 = val_f1
                 torch.save(model.state_dict(), 'best_emotion_model.pth')
-                logging.info(f"  ✓ En iyi model kaydedildi (Doğruluk: {val_acc:.2f}%)")
+                logging.info(f"  ✓ En iyi model kaydedildi (Macro F1: {val_f1:.4f})")
             
             # Checkpoint'i kaydet (devam ettirmek için)
-            save_checkpoint(CHECKPOINT_PATH, model, optimizer, epoch, best_val_acc,
-                           train_losses, train_accs, val_losses, val_accs)
+            save_checkpoint(CHECKPOINT_PATH, model, optimizer, epoch, best_val_f1,
+                           train_losses, train_f1s, val_losses, val_f1s)
             
             # Learning rate schedule
             scheduler.step()
@@ -546,18 +551,19 @@ def run():
             if continue_training not in ['e', 'evet', 'y', 'yes']:
                 logging.info("Eğitim devamı reddedildi. Test aşamasına geçiliyor...")
                 break
-            
-            logging.info(f"\n[ADIM 4-DEVAM] Model 4 Epoch Daha Eğitiliyor...\n")
-            NUM_EPOCHS += 4
+
+            logging.info(f"\n[ADIM 4-DEVAM] Model {EXTRA_EPOCH_COUNT} Epoch Daha Eğitiliyor...\n")
+            NUM_EPOCHS += EXTRA_EPOCH_COUNT 
     
     # ========== TEST ==========
     logging.info("\n[ADIM 5] Model Test Ediliyor...")
     
     # En iyi modeli yükle
     model.load_state_dict(torch.load('best_emotion_model.pth'))
-    test_acc, all_preds, all_labels = test(model, test_loader, DEVICE)
+    test_f1, test_acc, all_preds, all_labels = test(model, test_loader, DEVICE)
     
-    logging.info(f"\n[SONUÇ] Test Doğruluğu: {test_acc:.2f}%")
+    logging.info(f"\n[SONUÇ] Test Macro F1: {test_f1:.4f}")
+    logging.info(f"[SONUÇ] Test Doğruluğu: {test_acc:.2f}%")
     
     # Classification Report - Sadece test setinde bulunan sınıfları kullan
     logging.info("\nDetaylı Rapor:")
@@ -597,12 +603,12 @@ def run():
     plt.grid(True, alpha=0.3)
     
     plt.subplot(1, 2, 2)
-    plt.plot(train_accs, label='Eğitim', linewidth=2)
-    plt.plot(val_accs, label='Doğrulama', linewidth=2)
+    plt.plot(train_f1s, label='Eğitim', linewidth=2)
+    plt.plot(val_f1s, label='Doğrulama', linewidth=2)
     plt.xlabel('Epoch')
-    plt.ylabel('Doğruluk (%)')
+    plt.ylabel('Macro F1 Score')
     plt.legend()
-    plt.title('Doğruluk Eğrisi')
+    plt.title('Macro F1 Eğrisi')
     plt.grid(True, alpha=0.3)
     
     plt.suptitle(f'Eğitim Geçmişi - {timestamp}', fontsize=14, fontweight='bold')
@@ -635,12 +641,13 @@ def run():
         f.write(f"  - Test: {len(test_paths)}\n\n")
         
         f.write(f"SONUÇLAR:\n")
+        f.write(f"  - Test Macro F1: {test_f1:.4f}\n")
         f.write(f"  - Test Doğruluğu: {test_acc:.2f}%\n")
-        f.write(f"  - En İyi Doğrulama Doğruluğu: {best_val_acc:.2f}%\n")
+        f.write(f"  - En İyi Doğrulama Macro F1: {best_val_f1:.4f}\n")
         f.write(f"  - Final Eğitim Loss: {train_losses[-1]:.4f}\n")
         f.write(f"  - Final Doğrulama Loss: {val_losses[-1]:.4f}\n")
-        f.write(f"  - Final Eğitim Doğruluğu: {train_accs[-1]:.2f}%\n")
-        f.write(f"  - Final Doğrulama Doğruluğu: {val_accs[-1]:.2f}%\n\n")
+        f.write(f"  - Final Eğitim Macro F1: {train_f1s[-1]:.4f}\n")
+        f.write(f"  - Final Doğrulama Macro F1: {val_f1s[-1]:.4f}\n\n")
         
         f.write(f"DOSYALAR:\n")
         f.write(f"  - Log Dosyası: {log_file}\n")
@@ -653,7 +660,7 @@ def run():
     
     logging.info(f"[INFO] Özet Raporu kaydedildi: {summary_file}")
     logging.info("\n" + "="*80)
-    logging.info(f"EĞITIM SESSİYONU TAMAMLANDI - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"EĞITIM SESSION TAMAMLANDI - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logging.info("="*80)
     logging.info(f"\n📁 TÜM DOSYALAR:\n  - Log: {log_file}\n  - Özet: {summary_file}\n  - Matrix: {confusion_matrix_file}\n  - Grafik: {training_history_file}\n")
     
