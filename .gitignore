@@ -1,0 +1,4 @@
+data/*
+training_info/*
+__pycache__/*
+*.pth
