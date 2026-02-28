@@ -37,11 +37,13 @@ LOGS_PATH = Path(METRICS_PATH / "logs")
 
 DATA_ROOT = Path(PATHBASE / "data" / "StableFaceData")
 CSV_PATH = f"{DATA_ROOT}/AffectNet41k_FlameRender_Descriptions_Images/Modified_processed_affectnet_paths.csv"
-CHECKPOINT_PATH = "training_checkpoint.pth"
+OUTPUT_LAST_MODEL_PATH = "last.pth"
+OUTPUT_BEST_MODEL_PATH = "best.pth"
 
 BATCH_SIZE = 24
 NUM_EPOCHS = 5
 LEARNING_RATE = 0.001
+PATIENCE = 5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
 EXTRA_EPOCH_COUNT = 3
@@ -421,11 +423,13 @@ def run():
     global PATHBASE
     global METRICS_PATH 
     global DATA_ROOT 
-    global CHECKPOINT_PATH 
+    global OUTPUT_LAST_MODEL_PATH 
+    global OUTPUT_BEST_MODEL_PATH 
     global BATCH_SIZE 
     global NUM_EPOCHS
     global LEARNING_RATE 
     global DEVICE
+    global PATIENCE
     
     # log başlat
     log_file, timestamp = setup_logging()
@@ -442,13 +446,14 @@ def run():
     
     # eğitim devam ettirme 
     resume_training = False
-    if Path(CHECKPOINT_PATH).exists():
-        logging.info(f"\n[!] Önceki checkpoint bulundu: {CHECKPOINT_PATH}")
+    if Path(OUTPUT_LAST_MODEL_PATH).exists():
+        logging.info(f"\n[!] Önceki checkpoint bulundu: {OUTPUT_LAST_MODEL_PATH}")
         user_input = input("Eğitimi devam ettirmek istiyor musun? (e/h): ").strip().lower()
         resume_training = user_input in ['e', 'evet', 'y', 'yes']
     
     start_epoch = 0
     best_val_f1 = 0.0
+    patience_counter = 0
     
     # Veri Hazırlığı
     logging.info("\n[ADIM 1] Veri Hazırlanıyor...")
@@ -494,10 +499,13 @@ def run():
     
     if resume_training:
         start_epoch, best_val_f1, train_losses, train_f1s, val_losses, val_f1s = \
-            load_checkpoint(CHECKPOINT_PATH, model, optimizer, DEVICE)
+            load_checkpoint(OUTPUT_LAST_MODEL_PATH, model, optimizer, DEVICE)
+    
+    # Kaç yeni epoch yapılacağını hesapla (early stopping için)
+    num_new_epochs = NUM_EPOCHS - start_epoch
     
     # ========== EĞİTİM (DÖNGÜ) ==========
-    logging.info(f"\n[ADIM 4] Model Eğitiliyor (Epoch {start_epoch + 1}-{NUM_EPOCHS})...\n")
+    logging.info(f"\n[ADIM 4] Model Eğitiliyor (Epoch {start_epoch + 1}-{NUM_EPOCHS})...  ({num_new_epochs} yeni epoch)\n")
     
     epoch = start_epoch
     
@@ -526,11 +534,22 @@ def run():
             # En iyi modeli kaydet
             if val_f1 > best_val_f1:
                 best_val_f1 = val_f1
-                torch.save(model.state_dict(), 'best_emotion_model.pth')
+                torch.save(model.state_dict(), OUTPUT_BEST_MODEL_PATH)
                 logging.info(f"  ✓ En iyi model kaydedildi (Macro F1: {val_f1:.4f})")
+                patience_counter = 0  # Reset patience counter
+            else:
+                patience_counter += 1
+                logging.info(f"  ℹ Patience Counter: {patience_counter}/{PATIENCE}")
+            
+            # Early Stopping kontrol (sadece num_new_epochs > 5 ise çalışsın)
+            if patience_counter >= PATIENCE and num_new_epochs > 5:
+                logging.info(f"\n[EARLY STOPPING] {PATIENCE} epoch boyunca iyileşme olmadı.")
+                logging.info(f"Eğitim durduruluyor. En iyi model yükleniyor...")
+                model.load_state_dict(torch.load(OUTPUT_BEST_MODEL_PATH))
+                break
             
             # Checkpoint'i kaydet (devam ettirmek için)
-            save_checkpoint(CHECKPOINT_PATH, model, optimizer, epoch, best_val_f1,
+            save_checkpoint(OUTPUT_LAST_MODEL_PATH, model, optimizer, epoch, best_val_f1,
                            train_losses, train_f1s, val_losses, val_f1s)
             
             # Learning rate schedule
@@ -553,7 +572,8 @@ def run():
                 break
 
             logging.info(f"\n[ADIM 4-DEVAM] Model {EXTRA_EPOCH_COUNT} Epoch Daha Eğitiliyor...\n")
-            NUM_EPOCHS += EXTRA_EPOCH_COUNT 
+            NUM_EPOCHS += EXTRA_EPOCH_COUNT
+            num_new_epochs += EXTRA_EPOCH_COUNT  # Yeni epoch sayısını da güncelle 
     
     # ========== TEST ==========
     logging.info("\n[ADIM 5] Model Test Ediliyor...")
