@@ -1,4 +1,8 @@
-data/*
-training_info/*
-__pycache__/*
+sentiment_model/data/*
+sentiment_model/training_info/*
+face_recognition/models/*
+*.tflite
+*.jpg
+__pycache__
 *.pth
+*.md

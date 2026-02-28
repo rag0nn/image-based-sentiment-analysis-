@@ -37,11 +37,11 @@ LOGS_PATH = Path(METRICS_PATH / "logs")
 
 DATA_ROOT = Path(PATHBASE / "data" / "StableFaceData")
 CSV_PATH = f"{DATA_ROOT}/AffectNet41k_FlameRender_Descriptions_Images/Modified_processed_affectnet_paths.csv"
-OUTPUT_LAST_MODEL_PATH = "last.pth"
-OUTPUT_BEST_MODEL_PATH = "best.pth"
+OUTPUT_LAST_MODEL_PATH = Path(PATHBASE / "last.pth")
+OUTPUT_BEST_MODEL_PATH = Path(PATHBASE / "best.pth")
 
 BATCH_SIZE = 24
-NUM_EPOCHS = 5
+NUM_EPOCHS = 11
 LEARNING_RATE = 0.001
 PATIENCE = 5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -576,14 +576,14 @@ def run():
             num_new_epochs += EXTRA_EPOCH_COUNT  # Yeni epoch sayısını da güncelle 
     
     # ========== TEST ==========
-    logging.info("\n[ADIM 5] Model Test Ediliyor...")
+    logging.info("\n[ADIM 5] En İyi Model Test Ediliyor...")
     
     # En iyi modeli yükle
-    model.load_state_dict(torch.load('best_emotion_model.pth'))
+    model.load_state_dict(torch.load(OUTPUT_BEST_MODEL_PATH))
     test_f1, test_acc, all_preds, all_labels = test(model, test_loader, DEVICE)
     
-    logging.info(f"\n[SONUÇ] Test Macro F1: {test_f1:.4f}")
-    logging.info(f"[SONUÇ] Test Doğruluğu: {test_acc:.2f}%")
+    logging.info(f"\n[SONUÇ] En İyi Test Macro F1: {test_f1:.4f}")
+    logging.info(f"[SONUÇ] TEn İyi Test Doğruluğu: {test_acc:.2f}%")
     
     # Classification Report - Sadece test setinde bulunan sınıfları kullan
     logging.info("\nDetaylı Rapor:")
