@@ -21,13 +21,13 @@ EMOTION_DICT = {
 }
 
 EMOTION_DICT_TR = {
-    0: 'Nötr',
+    0: 'Notr',
     1: 'Mutlu',
-    2: 'Üzgün',
+    2: 'Uzgun',
     3: 'ŞAşırmış',
     4: 'Korku',
-    5: 'İğrenme',
-    6: 'Öfke',
-    7: 'Küçümseme'
+    5: 'Igrenme',
+    6: 'Ofke',
+    7: 'Kucumseme'
 }
 NUM_EMOTIONS = len(EMOTION_DICT)

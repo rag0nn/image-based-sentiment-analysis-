@@ -6,3 +6,4 @@ face_recognition/models/*
 __pycache__
 *.pth
 *.md
+*.mp4

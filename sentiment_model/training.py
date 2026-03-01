@@ -41,7 +41,7 @@ OUTPUT_LAST_MODEL_PATH = Path(PATHBASE / "last.pth")
 OUTPUT_BEST_MODEL_PATH = Path(PATHBASE / "best.pth")
 
 BATCH_SIZE = 24
-NUM_EPOCHS = 11
+NUM_EPOCHS = 24
 LEARNING_RATE = 0.001
 PATIENCE = 5
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -564,7 +564,7 @@ def run():
         else:
             # Tüm epochs tamamlandı, devam sorgusu yap
             logging.info("\n[!] Eğitim Tamamlandı!")
-            
+        
             continue_training = input(f"\nEğitimi 4 epoch daha devam ettirmek istiyor musun? (e/h): ").strip().lower()
             
             if continue_training not in ['e', 'evet', 'y', 'yes']:
