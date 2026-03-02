@@ -5,6 +5,7 @@ from typing import Tuple, Union
 import math
 import cv2
 import numpy as np
+import os
 
 MARGIN = 10  # pixels
 ROW_SIZE = 10  # pixels
@@ -12,7 +13,11 @@ FONT_SIZE = 1
 FONT_THICKNESS = 1
 TEXT_COLOR = (255, 0, 0)  # red
   
+"""
 
+TODO gap'li face tahmini tek bir yerde olacak yani face direkt gapli olarak tahmin edilce
+şunda anootated ögapsiz döndürülüyor
+"""
 def _normalized_to_pixel_coordinates(
     normalized_x: float, normalized_y: float, image_width: int,
     image_height: int) -> Union[None, Tuple[int, int]]:
@@ -73,7 +78,7 @@ def visualize(
 
     return annotated_image
 
-def detect_face(image_path:str)->Tuple:
+def detect_face(image:np.ndarray)->Tuple:
     """
     Args:
         image_path
@@ -82,19 +87,66 @@ def detect_face(image_path:str)->Tuple:
         detection_result: Results
     """
     # STEP 2: Create an FaceDetector object.
-    base_options = python.BaseOptions(model_asset_path='detector.tflite')
+    base_options = python.BaseOptions(model_asset_path=f'{os.path.dirname(__file__)}/detector.tflite')
     options = vision.FaceDetectorOptions(base_options=base_options)
     detector = vision.FaceDetector.create_from_options(options)
 
     # STEP 3: Load the input image.
-    image = mp.Image.create_from_file(image_path)
+    mp_image = mp.Image(
+        image_format=mp.ImageFormat.SRGB,
+        data=image
+    )
 
     # STEP 4: Detect faces in the input image.
-    detection_result = detector.detect(image)
+    detection_result = detector.detect(mp_image)
 
     # STEP 5: Process the detection result. In this case, visualize it.
-    image_copy = np.copy(image.numpy_view())
-    annotated_image = visualize(image_copy, detection_result)
+    mp_image_copy = np.copy(mp_image.numpy_view())
+    annotated_image = visualize(mp_image_copy, detection_result)
     rgb_annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
     
     return rgb_annotated_image, detection_result  
+
+def crop_largest_face(image, detection_result, gap_bottom=25, gap_top= 200, gap_left=20, gap_right=20):
+    """
+    En büyük yüzü kırpar.
+
+    Args:
+        image: input RGB numpy array
+        detection_result: mediapipe detection result
+        gap: yüz crop'una eklenecek boşluk (piksel)
+
+    Returns:
+        cropped_face: kırpılmış en büyük yüz (numpy array)
+        bbox: (x, y, w, h) bounding box koordinatları
+    """
+    h_img, w_img, _ = image.shape
+
+    if not detection_result.detections:
+        return None, None  # yüz yoksa
+
+    # En büyük yüzü bul
+    largest_bbox = None
+    max_area = 0
+    for detection in detection_result.detections:
+        bbox = detection.bounding_box
+        area = bbox.width * bbox.height
+        if area > max_area:
+            max_area = area
+            largest_bbox = bbox
+
+    # Bounding box koordinatları
+    x = largest_bbox.origin_x
+    y = largest_bbox.origin_y
+    w = largest_bbox.width
+    h = largest_bbox.height
+
+    # Gap ekle ve sınırları kontrol et
+    x1 = max(0, x - gap_left)
+    y1 = max(0, y - gap_top)
+    x2 = min(w_img, x + w + gap_right)
+    y2 = min(h_img, y + h + gap_bottom)
+
+    cropped_face = image[y1:y2, x1:x2]
+
+    return cropped_face, (x1, y1, x2 - x1, y2 - y1)

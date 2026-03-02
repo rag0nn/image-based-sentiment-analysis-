@@ -41,9 +41,9 @@ OUTPUT_LAST_MODEL_PATH = Path(PATHBASE / "last.pth")
 OUTPUT_BEST_MODEL_PATH = Path(PATHBASE / "best.pth")
 
 BATCH_SIZE = 24
-NUM_EPOCHS = 24
+NUM_EPOCHS = 22
 LEARNING_RATE = 0.001
-PATIENCE = 5
+PATIENCE = 8
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
 EXTRA_EPOCH_COUNT = 3
@@ -575,7 +575,8 @@ def run():
             NUM_EPOCHS += EXTRA_EPOCH_COUNT
             num_new_epochs += EXTRA_EPOCH_COUNT  # Yeni epoch sayısını da güncelle 
     
-    # ========== TEST ==========
+    # ========== TEST ==========,
+    os.system(f'notify-send "MODEL EĞİTİMİ" "Model Eğitimi Tamamlandı"')
     logging.info("\n[ADIM 5] En İyi Model Test Ediliyor...")
     
     # En iyi modeli yükle
