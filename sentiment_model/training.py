@@ -734,7 +734,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=NUM_EPOCHS,
                         help="Number of training epochs")
     
-    parser.add_argument("--input", type=str, required=DATA_ROOT,
+    parser.add_argument("--input", type=str, default=DATA_ROOT,
                         help="Input file path")
     
     parser.add_argument("--patience", type=int, default=PATIENCE,
