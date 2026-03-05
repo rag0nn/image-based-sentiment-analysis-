@@ -7,3 +7,6 @@ __pycache__
 *.pth
 *.md
 *.mp4
+
+tmp.py
+temp.py

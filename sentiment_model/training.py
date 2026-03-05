@@ -48,6 +48,7 @@ OUTPUT_BEST_MODEL_PATH = Path(PATHBASE / "best.pth")
 
 BATCH_SIZE = 24
 NUM_EPOCHS = 10
+TOTAL_EPOCHS = 100
 LEARNING_RATE = 0.001
 PATIENCE = 15
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -342,7 +343,7 @@ def validate(model, val_loader, criterion, device):
 
 
 def save_checkpoint(checkpoint_path, model, optimizer, scheduler, epoch, best_val_f1, 
-                   train_losses, train_f1s, val_losses, val_f1s):
+                   train_losses, train_f1s, val_losses, val_f1s, total_epochs=None):
     """Checkpoint'i kaydet (model + optimizer + scheduler + geçmiş)"""
     torch.save({
         'epoch': epoch,
@@ -354,6 +355,7 @@ def save_checkpoint(checkpoint_path, model, optimizer, scheduler, epoch, best_va
         'train_f1s': train_f1s,
         'val_losses': val_losses,
         'val_f1s': val_f1s,
+        'total_epochs': total_epochs,
     }, checkpoint_path)
     logging.debug(f"[INFO] Checkpoint kaydedildi: {checkpoint_path} (Epoch: {epoch})")
 
@@ -458,6 +460,7 @@ def run():
     global OUTPUT_BEST_MODEL_PATH 
     global BATCH_SIZE 
     global NUM_EPOCHS
+    global TOTAL_EPOCHS
     global LEARNING_RATE 
     global DEVICE
     global PATIENCE
@@ -524,10 +527,10 @@ def run():
     # Loss ve Optimizer
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    scheduler = CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS, eta_min=1e-5)
+    scheduler = CosineAnnealingLR(optimizer, T_max=TOTAL_EPOCHS, eta_min=1e-5)
     
     logging.info(f"Loss: Weighted CrossEntropyLoss")
-    logging.info(f"Scheduler: CosineAnnealingLR (T_max={NUM_EPOCHS}, eta_min=1e-6)")
+    logging.info(f"Scheduler: CosineAnnealingLR (T_max={TOTAL_EPOCHS}, eta_min=1e-5)")
     
     # Checkpoint'ten devam ettir
     train_losses = []
@@ -538,9 +541,13 @@ def run():
     if resume_training:
         start_epoch, best_val_f1, train_losses, train_f1s, val_losses, val_f1s = \
             load_checkpoint(OUTPUT_LAST_MODEL_PATH, model, optimizer, scheduler, DEVICE)
+        # Scheduler'ın T_max'ını her zaman TOTAL_EPOCHS ile override et
+        # (eski checkpointlerde farklı T_max kaydedilmiş olabilir)
+        scheduler.T_max = TOTAL_EPOCHS
     
-    # Kaç yeni epoch yapılacağını hesapla (early stopping için)
-    num_new_epochs = NUM_EPOCHS - start_epoch
+    # NUM_EPOCHS "kaç epoch eğitilecek" anlamında, hedef epoch'u hesapla
+    num_new_epochs = NUM_EPOCHS
+    NUM_EPOCHS = start_epoch + NUM_EPOCHS  # Hedef epoch sayısı
     
     # ========== EĞİTİM (DÖNGÜ) ==========
     logging.info(f"\n[ADIM 4] Model Eğitiliyor (Epoch {start_epoch + 1}-{NUM_EPOCHS})...  ({num_new_epochs} yeni epoch)\n")
@@ -589,7 +596,7 @@ def run():
             
             # Checkpoint'i kaydet (devam ettirmek için)
             save_checkpoint(OUTPUT_LAST_MODEL_PATH, model, optimizer, scheduler, epoch, best_val_f1,
-                           train_losses, train_f1s, val_losses, val_f1s)
+                           train_losses, train_f1s, val_losses, val_f1s, total_epochs=TOTAL_EPOCHS)
             
             # Learning rate schedule
             scheduler.step()
@@ -729,7 +736,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Model training script")
 
     parser.add_argument("--epochs", type=int, default=NUM_EPOCHS,
-                        help="Number of training epochs")
+                        help="Bu seferde kaç epoch eğitilecek")
+    
+    parser.add_argument("--total_epochs", type=int, default=TOTAL_EPOCHS,
+                        help="Scheduler için toplam hedef epoch sayısı (T_max)")
     
     parser.add_argument("--input", type=str, default=DATA_ROOT,
                         help="Input file path")
@@ -738,21 +748,26 @@ if __name__ == "__main__":
                         help="Number of patience training loops")
     
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
-                        help="Number of training epochs")
+                        help="Batch size")
     
     parser.add_argument("--lr", type=float, default=LEARNING_RATE,
-                        help="Number of training epochs")
+                        help="Learning rate")
     
     parser.add_argument("--extra_epochs", type=int, default=EXTRA_EPOCH_COUNT,
-                        help="Number of training epochs")
+                        help="Devam sorulduğunda eklenecek epoch sayısı")
 
     args = parser.parse_args()
     
     NUM_EPOCHS = args.epochs
+    TOTAL_EPOCHS = args.total_epochs
     DATA_ROOT = args.input
     PATIENCE = args.patience
     BATCH_SIZE = args.batch_size
     LEARNING_RATE = args.lr
     EXTRA_EPOCH_COUNT = args.extra_epochs
+    
+    if NUM_EPOCHS > TOTAL_EPOCHS:
+        print(f"[UYARI] --epochs ({NUM_EPOCHS}) > --total_epochs ({TOTAL_EPOCHS}). total_epochs, epochs'a eşitlendi.")
+        TOTAL_EPOCHS = NUM_EPOCHS
         
     run()

@@ -11,6 +11,9 @@ import numpy as np
 from utils import timer
 import cv2
 
+
+MODEL_PATH = "/home/enes/Desktop/old/best.pth"
+# MODEL_PATH = f"{os.path.dirname(__file__)}/sentiment_model/best.pth"
 class SentimentDetector:
     
     def __init__(self):
@@ -20,7 +23,8 @@ class SentimentDetector:
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             
-        model_path = f"{os.path.dirname(__file__)}/sentiment_model/best.pth"
+        global MODEL_PATH
+        model_path = MODEL_PATH
         # Model mimarisini oluştur
         model = models.resnet101(pretrained=False)
         num_ftrs = model.fc.in_features

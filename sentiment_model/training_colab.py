@@ -1,13 +1,9 @@
 """
 Model Eğitim Scripti
-
-veri:
-- RGB Görseller: affectnet_41k_AffectOnly/EmocaProcessed_38k/EmocaResized_35k/FLAMEResized/
-- Etiketler: Modified_processed_affectnet_paths.csv (header + 420,299 satır)
-- Eğitim/Test/Válida: Modified_Corpus_38k_train_split.json, test_split, validation.json
 """
 
 import os
+import shutil
 from typing import Tuple
 os.environ['PYTORCH_ALLOC_CONF'] = 'expandable_segments:True'
 
@@ -39,9 +35,9 @@ PATHBASE = Path(os.path.dirname(__file__))
 METRICS_PATH = Path(PATHBASE / "training_info")
 LOGS_PATH = Path(METRICS_PATH / "logs")
 
-DATA_ROOT = Path("/home/enes/Desktop/sentiment-analysis/data/Affectnet41k")
-
-# DATA_ROOT = Path("/content/drive/MyDrive/sentiment/Affectnet41k")
+# DATA_ROOT = Path("/home/enes/Desktop/sentiment-analysis/data/Affectnet41k")
+DATA_ROOT = Path("/content/drive/MyDrive/sentiment/Affectnet41k")
+COLAB_LOCAL_DATA = Path("/content/dataset")  # Colab root'a kopyalanacak hedef
 CSV_PATH = f"{DATA_ROOT}/labels.csv"
 OUTPUT_LAST_MODEL_PATH = Path(PATHBASE / "last.pth")
 OUTPUT_BEST_MODEL_PATH = Path(PATHBASE / "best.pth")
@@ -84,6 +80,37 @@ def setup_logging():
     logger.addHandler(console_handler)
     
     return log_file, timestamp
+
+
+def copy_data_to_local(source_root, local_root):
+    """
+    Veri setini Google Drive'dan Colab yerel diskine kopyalar.
+    Drive mount NFS benzeri overhead yaratır, yerel disk çok daha hızlıdır.
+    Eğer hedef zaten varsa kopyalama atlanır.
+    
+    Args:
+        source_root: Kaynak veri klasörü (Drive üzerinde)
+        local_root: Hedef yerel klasör (ör. /content/dataset)
+    
+    Returns:
+        Path: Kullanılacak veri kök dizini (local_root)
+    """
+    local_root = Path(local_root)
+    source_root = Path(source_root)
+    
+    if local_root.exists() and any(local_root.iterdir()):
+        logging.info(f"Yerel kopya zaten mevcut: {local_root} — kopyalama atlanıyor.")
+        return local_root
+    
+    logging.info(f"Veri seti yerel diske kopyalanıyor...")
+    logging.info(f"  Kaynak: {source_root}")
+    logging.info(f"  Hedef:  {local_root}")
+    
+    shutil.copytree(str(source_root), str(local_root))
+    
+    logging.info(f"Kopyalama tamamlandı: {local_root}")
+    return local_root
+
 
 # VERİ
 
@@ -275,7 +302,7 @@ def get_transforms()->Tuple:
 
 def create_model(num_classes=NUM_EMOTIONS, pretrained=True):
     """Resnet odelini oluştur"""
-    model = models.resnet50(pretrained=pretrained)
+    model = models.resnet101(pretrained=pretrained)
     
     # Son katmanı göreve uygun şekilde değiştir
     num_ftrs = model.fc.in_features
@@ -513,9 +540,15 @@ def run():
     best_val_f1 = 0.0
     patience_counter = 0
     
+    # Veri setini Drive'dan yerel diske kopyala (hız için)
+    logging.info("\n[ADIM 0] Veri Seti Yerel Diske Kopyalanıyor...")
+    DATA_ROOT = copy_data_to_local(DATA_ROOT, COLAB_LOCAL_DATA)
+    CSV_PATH = f"{DATA_ROOT}/labels.csv"
+    
     # Veri Hazırlığı
     logging.info("\n[ADIM 1] Veri Hazırlanıyor...")
     image_paths, labels = prepare_dataset_paths(CSV_PATH, DATA_ROOT)
+    
     # image_paths = image_paths[:2000]  # Test için veri azalt
     # labels = labels[:2000]
     
@@ -789,7 +822,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     NUM_EPOCHS = args.epochs
-    DATA_ROOT = args.input
+    DATA_ROOT = Path(args.input)
     PATIENCE = args.patience
     BATCH_SIZE = args.batch_size
     LEARNING_RATE = args.lr
