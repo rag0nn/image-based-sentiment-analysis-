@@ -6,6 +6,7 @@ src/structs.py
 src/utils.py
 src/face_recognition/__init__.py
 src/face_recognition/detect.py
+src/face_recognition/detect_new.py
 src/sentiment_model/__init__.py
 src/sentiment_model/detect.py
 src/sentiment_model/structs.py
@@ -14,6 +15,7 @@ src/sentinal.egg-info/SOURCES.txt
 src/sentinal.egg-info/dependency_links.txt
 src/sentinal.egg-info/requires.txt
 src/sentinal.egg-info/top_level.txt
+tests/test_config.py
 tests/test_detector.py
 tests/test_face_recognition.py
 tests/test_sentiment_model.py

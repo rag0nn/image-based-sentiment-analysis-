@@ -1,4 +1,3 @@
-from sentinal.src.face_recognition.detect import detect_face, crop_largest_face
 from sentiment_model.structs import EMOTION_DICT_TR,NUM_EMOTIONS
 import torch
 import torchvision.transforms as transforms
