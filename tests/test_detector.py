@@ -4,11 +4,14 @@ config.py'deki verilerin path'lerini kullanarak
 ve aşağıda tanımlanan MODEL_PATH, TEST_TYPE 
 seçeneklerini kullanarak test eder ve ekranda gösterir.
 """
-from project_test.config import TestTypes, loader
+import sys
+sys.path.append("../")
+
+from ..data.project_test.config import TestTypes, loader
 import cv2
 import rerun as rr
 import rerun.blueprint as rrb
-from detector import SentimentDetector
+from ..codebase.detector import SentimentDetector
 
 TEST_TYPE = TestTypes.VIDEO
 

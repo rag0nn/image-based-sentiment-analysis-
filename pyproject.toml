@@ -1,0 +1,27 @@
+[project]
+name = "sentinal"
+version = "0.1.0"
+description = "Visual based sentiment analysis"
+authors = [
+    {name="rag0nn"}
+]
+dependencies = [
+    "matplotlib",
+    "mediapipe",
+    "numpy",
+    "opencv_contrib_python",
+    "opencv_python",
+    "pandas",
+    "Pillow",
+    "rerun",
+    "scikit_learn",
+    "seaborn",
+    "torch",
+    "torchvision",
+    "tqdm",
+    "transformers",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
