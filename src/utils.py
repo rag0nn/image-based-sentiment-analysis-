@@ -1,6 +1,7 @@
 import platform
 import os
 import time
+import logging
 
 def timer(func):
     def outer(*args, **kwargs):
@@ -11,7 +12,7 @@ def timer(func):
         
         result = inner()
         end_time = time.time()
-        print(f"'{func.__name__}' fonksiyonu {end_time - start_time:.6f} saniye sürdü.")
+        logging.info(f"'{func.__name__}' fonksiyonu {end_time - start_time:.6f} saniye sürdü.")
         return result
 
     return outer

@@ -29,8 +29,8 @@ class FaceDetector:
         Args:
             image: Numpy.ndarray resim objesi
         Returns:
-            rgb_annotated_image: Image
-            detection_result: Results
+            rgb_annotated_image : Image
+            detection_result : Results
         """
         # Resmi Yükle
         mp_image = mp.Image(
@@ -123,5 +123,3 @@ class FaceDetector:
         
         return sorted_faces
     
-if __name__ == "__main__":
-    pass

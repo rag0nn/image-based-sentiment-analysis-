@@ -5,6 +5,12 @@ Configürasyon Yapıları
 ...
 """
 
+from enum import Enum
+
+class ModelTypes(Enum):
+    Resnet50 = "resnet50"
+    Resnet101 = "resnet101"
+
 EMOTION_DICT = {
     0: 'Neutral',
     1: 'Happy',
@@ -27,3 +33,4 @@ EMOTION_DICT_TR = {
     7: 'Kucumseme'
 }
 NUM_EMOTIONS = len(EMOTION_DICT)
+
