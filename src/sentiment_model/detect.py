@@ -21,7 +21,7 @@ FONT_THICKNESS_WRATIO = 500
 TEXT_COLOR = (255,255,255)  # yeşil
 BG_COLOR = (0, 255, 0)     
 
-class ClassifySentiment:
+class SentimentClassifier:
     
     def __init__(self, model_type:ModelTypes = ModelTypes.Resnet50, model_path = None, device=None):
         """
@@ -135,7 +135,7 @@ class ClassifySentiment:
         (text_width, text_height), baseline = cv2.getTextSize(text, FONT, fontScale, thickness)
         
         # Text kutusu koordinatları
-        x, y = 10, text_height + 4  # sol üst köşe
+        x, y = 10, text_height + 10  # sol üst köşe
         cv2.rectangle(
             annotated_image,
             (x - 5, y - text_height - 5),

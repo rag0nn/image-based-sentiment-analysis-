@@ -1,9 +1,33 @@
 import numpy as np
 from utils import timer
 from .face_recognition.detect import FaceDetector
-from .sentiment_model.detect import ClassifySentiment
+from .sentiment_model.detect import SentimentClassifier
 from .sentiment_model.structs import ModelTypes
 from typing import List, Tuple
+
+
+class Prediction:
+    
+    def __init__(self,
+        x:int,
+        y:int,
+        w:int,
+        h:int,
+        conf:float,
+        pred_lbl:int,
+        real_lbl:int=None):
+        
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.conf = conf
+        self.pred_lbl = pred_lbl
+        self.real_lbl = real_lbl
+        
+    def __repr__(self):
+        return f"({self.x},{self.y},{self.w},{self.h}) {self.conf} {self.pred_lbl} {self.real_lbl}"
+        
 
 class Sentinal:
     
@@ -13,13 +37,13 @@ class Sentinal:
                  device = None
                  ):
         self.face_detector = FaceDetector()
-        self.sentiment_model = ClassifySentiment(
+        self.sentiment_model = SentimentClassifier(
             sentiment_model_type, 
             sentiment_model_path,
             device)
     
     @timer
-    def detect(self, image: np.ndarray) -> Tuple[Tuple[int,float],List[np.ndarray]]:
+    def detect(self, image: np.ndarray) -> Tuple[List[Prediction],List[np.ndarray]]:
         """
         Verilen görüntüdei yüzleri bulur ve duygularını tahmin eder.
         Args:
@@ -39,11 +63,16 @@ class Sentinal:
         
         annotations.append(faces_annotated_image)
 
-        for face in face_images:
+        for face, detection in zip(face_images, results.detections):
             pred, conf = self.sentiment_model.predict(face)
             sentiment_annotated = self.sentiment_model.visualize(face,pred,conf,"tr")
+            
+            bbox = detection.bounding_box
+            
             annotations.append(sentiment_annotated)
-            predictions.append((pred, conf))
+            predictions.append(
+                Prediction(bbox.origin_x,bbox.origin_y,bbox.width,bbox.height,conf,pred)
+            )
             
         return predictions, annotations
         

@@ -42,7 +42,7 @@ def apply(test_type: TestTypes):
 
         # Detect
         predictions, annotations = detector.detect(frame_np)
-
+        
         face_annotated_image = annotations[0]
         sentiment_annotates = np.hstack([cv2.resize(im, (400,400)) for im in annotations[1:]])
 
@@ -54,10 +54,10 @@ def apply(test_type: TestTypes):
         rr.log("metrics/classes/real", rr.Scalars(real_label))
 
         # Tahminler ve confidence log
-        for i, (lbl, conf) in enumerate(predictions):
-            print(f"Real: {real_label}, Predicted: {lbl}, Conf: {conf:.2f}")
-            rr.log(f"metrics/classes/predicted/{i}", rr.Scalars(lbl))
-            rr.log(f"metrics/confidence/{i}", rr.Scalars(conf))
+        for i, pred in enumerate(predictions):
+            print(f"Real: {real_label}, Predicted: {pred.pred_lbl}, Conf: {pred.conf:.2f}")
+            rr.log(f"metrics/classes/predicted/{i}", rr.Scalars(pred.pred_lbl))
+            rr.log(f"metrics/confidence/{i}", rr.Scalars(pred.conf))
 
         frame_time += dt
 

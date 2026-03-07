@@ -1,9 +1,9 @@
-from sentinal import ClassifySentiment
+from sentinal import SentimentClassifier
 from .test_config import loader, TestTypes
 import cv2
 
 def main():
-    cs = ClassifySentiment()
+    cs = SentimentClassifier()
     for label, image in loader(TestTypes.IMAGESEQ):
         image = cv2.resize(image,(500 ,800))
 
