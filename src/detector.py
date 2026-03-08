@@ -32,7 +32,7 @@ class Prediction:
 class Sentinal:
     
     def __init__(self, 
-                 sentiment_model_type = ModelTypes.Resnet50, 
+                 sentiment_model_type = ModelTypes.Resnet101, 
                  sentiment_model_path = None,
                  device = None
                  ):

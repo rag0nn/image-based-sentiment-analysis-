@@ -13,7 +13,7 @@ import rerun.blueprint as rrb
 from sentinal import Sentinal
 import numpy as np
 
-TEST_TYPE = TestTypes.IMAGESEQ
+TEST_TYPE = TestTypes.VIDEO
 
 def apply(test_type: TestTypes):
     detector = Sentinal()

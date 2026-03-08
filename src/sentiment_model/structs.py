@@ -26,7 +26,7 @@ EMOTION_DICT_TR = {
     0: 'Notr',
     1: 'Mutlu',
     2: 'Uzgun',
-    3: 'ŞAşırmış',
+    3: 'Sasirmis',
     4: 'Korku',
     5: 'Igrenme',
     6: 'Ofke',

@@ -8,6 +8,7 @@ data_img_dict = {
     0: ["/home/enes/Desktop/sentiment-analysis/other/data/test/1772293663003.jpg",
         ],
     1: ["/home/enes/Desktop/sentiment-analysis/other/data/test/1772293662993.jpg",
+        "/home/enes/Desktop/sentiment-analysis/other/data/test/1772932573832.jpg"
         ],
     2: ["/home/enes/Desktop/sentiment-analysis/other/data/test/1772293662983.jpg",
         ],
