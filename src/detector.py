@@ -4,7 +4,7 @@ from .face_recognition.detect import FaceDetector
 from .sentiment_model.detect import SentimentClassifier
 from .sentiment_model.structs import ModelTypes
 from typing import List, Tuple
-
+import logging
 
 class Prediction:
     
@@ -73,6 +73,8 @@ class Sentinal:
             predictions.append(
                 Prediction(bbox.origin_x,bbox.origin_y,bbox.width,bbox.height,conf,pred)
             )
+            
+        logging.info(f"Founded {len(predictions)} faces")
             
         return predictions, annotations
         
