@@ -1,4 +1,3 @@
-from sentiment_model.structs import EMOTION_DICT_TR,NUM_EMOTIONS
 import torch
 import torchvision.transforms as transforms
 import torch.nn.functional as F
