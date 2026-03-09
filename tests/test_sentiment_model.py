@@ -1,9 +1,11 @@
-from sentinal import SentimentClassifier
+from sentinal import SentimentClassifier,ModelTypes
 from .test_config import loader, TestTypes
 import cv2
 
 def main():
-    cs = SentimentClassifier()
+    model_type = ModelTypes.Resnet101
+    model_path=  "/home/enes/Desktop/sentiment-analysis/sentinal/src/sentiment_model/best.pth"
+    cs = SentimentClassifier(model_type,model_path)
     for label, image in loader(TestTypes.IMAGESEQ):
         image = cv2.resize(image,(500 ,800))
 

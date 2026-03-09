@@ -2,9 +2,13 @@ import numpy as np
 from utils import timer
 from .face_recognition.detect import FaceDetector
 from .sentiment_model.detect import SentimentClassifier
-from .sentiment_model.structs import ModelTypes
+from .sentiment_model.structs import ModelTypes, Models
 from typing import List, Tuple
 import logging
+import gdown
+import os
+
+CHOSEN_MODEL = Models.HeavyResnet
 
 class Prediction:
     
@@ -31,17 +35,34 @@ class Prediction:
 
 class Sentinal:
     
-    def __init__(self, 
-                 sentiment_model_type = ModelTypes.Resnet101, 
-                 sentiment_model_path = None,
+    def __init__(self, sentiment_model:Models = None,
                  device = None
-                 ):
-        self.face_detector = FaceDetector()
+                 ):        
+        if sentiment_model is not None:
+            global CHOSEN_MODEL
+            CHOSEN_MODEL = sentiment_model
+            
+        model_type, remote_path, local_path = CHOSEN_MODEL.value
+        self._check_models(local_path,remote_path)
+        
         self.sentiment_model = SentimentClassifier(
-            sentiment_model_type, 
-            sentiment_model_path,
+            model_type, 
+            local_path,
             device)
+        self.face_detector = FaceDetector()
     
+    def _check_models(self, local_path, remote_path):
+        if os.path.exists(local_path):
+            logging.info(f"Model file found: {local_path}")
+        else:
+            logging.info(f"Model file did'nt find, Downloading...: {remote_path}")
+            try:
+                gdown.download(remote_path, local_path, quiet=False)
+            except Exception as e:
+                raise Exception(f"{e} Error occured when downloading model file")
+            logging.info("Model file downloaded successfully")
+
+
     @timer
     def detect(self, image: np.ndarray) -> Tuple[List[Prediction],List[np.ndarray]]:
         """

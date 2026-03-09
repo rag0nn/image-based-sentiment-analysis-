@@ -11,8 +11,6 @@ import cv2
 import logging
 from .structs import EMOTION_DICT_TR, EMOTION_DICT, NUM_EMOTIONS, ModelTypes
 
-MODEL_PATH = f"{os.path.dirname(__file__)}/best.pth"
-
 # Yazı parametreleri
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 FONST_SCALE_WRATIO = 350
@@ -22,7 +20,10 @@ BG_COLOR = (0, 255, 0)
 
 class SentimentClassifier:
     
-    def __init__(self, model_type:ModelTypes = ModelTypes.Resnet50, model_path = None, device=None):
+    def __init__(self, 
+                 model_type:ModelTypes, 
+                 model_path:str,
+                 device=None):
         """
         Duygu sınıflandırması yapan model
         Args:
@@ -31,9 +32,7 @@ class SentimentClassifier:
             device (str, Optional): cpu, cude etc.
         """
         self.model_type = model_type
-        if model_path is not None:
-            global MODEL_PATH
-            MODEL_PATH = model_path
+        self.model_path = model_path
         self.model, self.device = self._load_model(device) 
     
     def _load_model(self, device=None):
@@ -46,24 +45,29 @@ class SentimentClassifier:
         elif self.model_type == ModelTypes.Resnet50:
             model = models.resnet50(pretrained=False)    
         else:
-            raise KeyError(f"Invalid input for model_type = {self.model_type}. Must one of detect.ModelTypes ")
+            raise KeyError(f"Invalid input for model_type = {self.model_type}")
+        
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, NUM_EMOTIONS)
 
-        # State dict yükle
-        try:
-            state_dict = torch.load(MODEL_PATH, map_location=device)
-        except Exception as e:
-            raise Exception(f"{e}\n\nModel not found {MODEL_PATH}")
-        model.load_state_dict(state_dict)
+        # Direkt state_dict yükle
+        state_dict = torch.load(self.model_path, map_location=device)
+        
+        # Eğer _orig_mod prefix varsa temizle
+        from collections import OrderedDict
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            if k.startswith("_orig_mod."):
+                name = k[len("_orig_mod."):]
+            else:
+                name = k
+            new_state_dict[name] = v
 
+        model.load_state_dict(new_state_dict)
         model.to(device)
         model.eval()
-        
-        logging.info(f"Model {self.model_type.value} loaded succesfully from {MODEL_PATH} to {device}")
-        
         return model, device
-
+    
     @timer
     def predict(self, image:np.ndarray, verbose=True):
         """

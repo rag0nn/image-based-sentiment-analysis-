@@ -10,14 +10,19 @@ from .test_config import loader, TestTypes
 import cv2
 import rerun as rr
 import rerun.blueprint as rrb
-from sentinal import Sentinal
+from sentinal import Sentinal, Models
 import numpy as np
-
+import logging
 TEST_TYPE = TestTypes.VIDEO
 
-def apply(test_type: TestTypes):
-    detector = Sentinal()
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+logger.addHandler(console_handler)
 
+def apply(test_type: TestTypes):
+    detector = Sentinal(Models.HeavyResnet)
     # SDK başlatılıyor ve Viewer spawn ediliyor
     rr.init("sentiment_detection", spawn=True)
     
