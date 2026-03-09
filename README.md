@@ -26,12 +26,12 @@ Testler İçin:
 - Rerun: ```conda install -c conda-forge rerun-sdk```
 
 **Uyarı**
-- Mediapipe içerisinde kullanılan yüz tespiti için gerekli tflite modülü harici olarak indirilebilir. ![docs](https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector)
+- Mediapipe içerisinde kullanılan yüz tespiti için gerekli tflite modülü harici olarak indirilebilir. [docs](https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector)
 - Paket versiyonları test edilen environment'tan alınmıştır
 
 # Veri
 
-- Affectnet41k ![Veri seti linki](https://huggingface.co/datasets/ValerianFourel/AffectNetDiffusion-Annotations-Render-And-Images): 
+- Affectnet41k [Veri seti linki](https://huggingface.co/datasets/ValerianFourel/AffectNetDiffusion-Annotations-Render-And-Images): 
     | Etiket | Görsel Sayısı|
     | ----- | ----- |
     | (Neutral) | 4194 |
