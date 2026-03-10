@@ -6,7 +6,6 @@ import torch.nn as nn
 from PIL import Image
 import os
 import numpy as np
-from utils import timer
 import cv2
 import logging
 from .structs import EMOTION_DICT_TR, EMOTION_DICT, NUM_EMOTIONS, ModelTypes
@@ -67,8 +66,7 @@ class SentimentClassifier:
         model.to(device)
         model.eval()
         return model, device
-    
-    @timer
+
     def predict(self, image:np.ndarray, verbose=True):
         """
         Görseldeki duyguyu tahmin eder,

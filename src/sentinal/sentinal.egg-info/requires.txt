@@ -1,0 +1,14 @@
+matplotlib
+mediapipe
+numpy
+opencv_contrib_python
+opencv_python
+pandas
+Pillow
+rerun
+scikit_learn
+seaborn
+torch
+torchvision
+tqdm
+transformers
