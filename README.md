@@ -27,11 +27,16 @@ Testler İçin:
 
 **Uyarı**
 - Mediapipe içerisinde kullanılan yüz tespiti için gerekli tflite modülü harici olarak indirilebilir. [docs](https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector)
+```
+import urllib.request
+url = "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite"
+urllib.request.urlretrieve(url, "detector.tflite")
+```
 - Paket versiyonları test edilen environment'tan alınmıştır
 
 # Veri
 
-- Affectnet41k [Veri seti linki](https://huggingface.co/datasets/ValerianFourel/AffectNetDiffusion-Annotations-Render-And-Images): 
+- Affectnet41k [Veri seti linki](https://huggingface.co/datasets/ValerianFourel/AffectNetDiffusion-Annotations-Render-And-Images) (28699): 
     | Etiket | Görsel Sayısı|
     | ----- | ----- |
     | (Neutral) | 4194 |
@@ -42,7 +47,7 @@ Testler İçin:
     | (Disgust) | 2838 |
     | (Anger) | 2962 |
     | (Contempt) | 2871 |
-
+- 9 Facial (eklenecek)
 
 # Model
 
