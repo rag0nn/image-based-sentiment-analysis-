@@ -11,8 +11,6 @@ import rerun as rr
 import rerun.blueprint as rrb
 from sentinal.detector import Sentinal, Models
 import logging
-import dearpygui.dearpygui as dpg
-import numpy as np
 
 TEST_TYPE = TestTypes.VIDEO
 WINDOW_H = 700
