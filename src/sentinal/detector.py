@@ -1,12 +1,13 @@
 import numpy as np
-from .utils import timer
+from .utils import timer, Colors
 from .face_recognition.detect import FaceDetector
 from .sentiment_model.detect import SentimentClassifier
 from .sentiment_model.structs import ModelTypes, Models
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 import logging
 import gdown
 import os
+import cv2
 
 CHOSEN_MODEL = Models.HeavyResnet
 
@@ -32,7 +33,6 @@ class Prediction:
     def __repr__(self):
         return f"({self.x},{self.y},{self.w},{self.h}) {self.conf} {self.pred_lbl} {self.real_lbl}"
         
-
 class Sentinal:
     
     def __init__(self, sentiment_model:Models = None,
@@ -64,7 +64,7 @@ class Sentinal:
 
 
     @timer
-    def detect(self, image: np.ndarray) -> Tuple[List[Prediction],List[np.ndarray]]:
+    def detect(self, image: np.ndarray) -> List[Prediction]:
         """
         Verilen görüntüdei yüzleri bulur ve duygularını tahmin eder.
         Args:
@@ -73,32 +73,69 @@ class Sentinal:
             predictions: conjugated tuples of predictions like (label, conf)
             annotations: annotations of process, first one is face annotation others sentiment annotations
         """
-        annotations = []
         predictions = []
         
         # face recognition
         results = self.face_detector.detect_face(image)
         results = self.face_detector.add_margin(image,results)
-        faces_annotated_image = self.face_detector.visualize(image, results)
         face_images = self.face_detector.crop_faces(image, results)
-        
-        annotations.append(faces_annotated_image)
 
+        # sentiment analysis
         for face, detection in zip(face_images, results.detections):
             pred, conf = self.sentiment_model.predict(face)
-            sentiment_annotated = self.sentiment_model.visualize(face,pred,conf,"tr")
             
             bbox = detection.bounding_box
             
-            annotations.append(sentiment_annotated)
             predictions.append(
                 Prediction(bbox.origin_x,bbox.origin_y,bbox.width,bbox.height,conf,pred)
             )
             
         logging.info(f"Founded {len(predictions)} faces")
             
-        return predictions, annotations
-        
+        return predictions
+    
+    def visualize(self, image:np.ndarray, predictions:List[Prediction], label_dict:Dict):
+        H,W,_ = image.shape
+        for pred in predictions:
+            
+            # roi
+            cv2.rectangle(
+                image, 
+                (pred.x,pred.y),
+                (pred.x+pred.w,pred.y+pred.h),
+                Colors.RED_PRIMARY.value,
+                int(min(H,W)/100))
+            
+            #label info
+            label_rect_gap = int(min(H,W)/30)
+            lbl = f"{pred.conf:.2f} {pred.pred_lbl} {label_dict.get(pred.pred_lbl,'Uknown')}"
+            font_scale = min(W,H)/500
+            font_thickness = int(min(W,H)/200)
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            (text_width, text_height), baseline = cv2.getTextSize(lbl, font, font_scale, font_thickness)
+            
+            # label ractangle
+            cv2.rectangle(
+                image,
+                (pred.x,pred.y),
+                (pred.x+text_width+label_rect_gap, pred.y+text_height+label_rect_gap),
+                Colors.RED_PRIMARY.value,
+                -1
+            )
+            
+            # label
+            cv2.putText(
+                image,
+                lbl,
+                (pred.x+int(label_rect_gap/2),pred.y+text_height+int(label_rect_gap/2)),
+                font,
+                font_scale,
+                Colors.SNOWWHITE.value,
+                font_thickness
+                )
+            
+        return image
+            
     def close(self):
         self.face_detector.close()
         

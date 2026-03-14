@@ -3,26 +3,29 @@ Face Recognition ve sentiment modellerini
 config.py'deki verilerin path'lerini kullanarak 
 ve MODEL_PATH, TEST_TYPE seçeneklerini kullanarak test eder.
 """
-import sys
-sys.path.append("../")
 
 from test_config import loader, TestTypes
+from sentinal.sentiment_model.structs import EMOTION_DICT, EMOTION_DICT_TR
 import cv2
 import rerun as rr
 import rerun.blueprint as rrb
 from sentinal.detector import Sentinal, Models
-import numpy as np
 import logging
-TEST_TYPE = TestTypes.VIDEO
+import dearpygui.dearpygui as dpg
+import numpy as np
 
+TEST_TYPE = TestTypes.VIDEO
+WINDOW_H = 700
+
+# LOGGERS
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 logger.addHandler(console_handler)
 
-def apply(test_type: TestTypes):
-    detector = Sentinal(Models.HeavyResnet)
+def apply_with_rerun(test_type: TestTypes):
+    detector = Sentinal(Models.MobileSmall)
     # SDK başlatılıyor ve Viewer spawn ediliyor
     rr.init("sentiment_detection", spawn=True)
     
@@ -30,8 +33,7 @@ def apply(test_type: TestTypes):
     rr.send_blueprint(
         rrb.Blueprint(
                 rrb.Horizontal(
-                    rrb.Spatial2DView(origin="image/face_detected"),
-                    rrb.Spatial2DView(origin="image/sentiment"),
+                    rrb.Spatial2DView(origin="image/annotated"),
                     rrb.TimeSeriesView(origin="metrics/classes"),
                     rrb.TimeSeriesView(origin="metrics/confidence"),
                 ),
@@ -46,14 +48,11 @@ def apply(test_type: TestTypes):
         rr.set_time("sim_time", sequence=int(frame_time))
 
         # Detect
-        predictions, annotations = detector.detect(frame_np)
+        predictions = detector.detect(frame_np)
+        annotated = detector.visualize(frame_np.copy(),predictions,EMOTION_DICT_TR)
         
-        face_annotated_image = annotations[0]
-        sentiment_annotates = np.hstack([cv2.resize(im, (400,400)) for im in annotations[1:]])
-
         # Görselleri logla
-        rr.log("image/face_detected", rr.Image(cv2.cvtColor(face_annotated_image,cv2.COLOR_BGR2RGB)))
-        rr.log("image/sentiment", rr.Image(cv2.cvtColor(sentiment_annotates, cv2.COLOR_BGR2RGB)))
+        rr.log("image/annotated", rr.Image(cv2.cvtColor(annotated,cv2.COLOR_BGR2RGB)))
 
         # Gerçek sınıf
         rr.log("metrics/classes/real", rr.Scalars(real_label))
@@ -66,5 +65,34 @@ def apply(test_type: TestTypes):
 
         frame_time += dt
 
+
+def apply_with_cv2(test_type):
+    detector = Sentinal(Models.MobileSmall)
+    frame_time = 0
+    for real_label, frame_np in loader(test_type):
+        # Detect
+        predictions = detector.detect(frame_np)
+        annotated = detector.visualize(frame_np.copy(),predictions,EMOTION_DICT_TR)
+        # Tahminler ve confidence log
+        for i, pred in enumerate(predictions):
+            print(f"Real: {real_label}, Predicted: {pred.pred_lbl}, Conf: {pred.conf:.2f}")        
+        h,w,_ = frame_np.shape
+        ratio = w/h
+        new_w = int(ratio * WINDOW_H)
+        annotated = cv2.resize(annotated, (new_w,WINDOW_H))
+        cv2.imshow("Annotated", annotated)            
+        if test_type == TestTypes.IMAGESEQ:
+            key = cv2.waitKey(0)
+            if key == ord("q"):
+                break
+            else:
+                pass
+        else:
+            key = cv2.waitKey(1)
+            if key == ord("q"):
+                break
+        frame_time += 1
+
+
 if __name__ == "__main__":
-    apply(TEST_TYPE)
+    apply_with_rerun(TEST_TYPE)

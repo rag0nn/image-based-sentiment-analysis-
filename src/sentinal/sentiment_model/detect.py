@@ -40,14 +40,20 @@ class SentimentClassifier:
             
         if self.model_type == ModelTypes.Resnet101:
             model = models.resnet101(pretrained=False)
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, NUM_EMOTIONS)
         elif self.model_type == ModelTypes.Resnet50:
-            model = models.resnet50(pretrained=False)    
+            model = models.resnet50(pretrained=False)  
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, NUM_EMOTIONS)
+        elif self.model_type == ModelTypes.MobileSmall:
+            model = models.mobilenet_v3_small(pretrained=False)
+            # Son classifier katmanını değiştir
+            in_features = model.classifier[3].in_features
+            model.classifier[3] = nn.Linear(in_features, NUM_EMOTIONS)
         else:
             raise KeyError(f"Invalid input for model_type = {self.model_type}")
         
-        num_ftrs = model.fc.in_features
-        model.fc = nn.Linear(num_ftrs, NUM_EMOTIONS)
-
         # Direkt state_dict yükle
         state_dict = torch.load(self.model_path, map_location=device)
         

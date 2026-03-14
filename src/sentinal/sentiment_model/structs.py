@@ -10,6 +10,7 @@ from enum import Enum
 class ModelTypes(Enum):
     Resnet50 = "resnet50"
     Resnet101 = "resnet101"
+    MobileSmall = "mobile_small"
 
 class Models(Enum):
     MiddleResnet = (
@@ -19,11 +20,16 @@ class Models(Enum):
     MiddleResnetConstLabel = (
         ModelTypes.Resnet50,
         "https://drive.google.com/uc?id=1c1yUi0aIdLZ8bbgMqxgW0cXDSUeS_Ypv",
-        f"{os.path.dirname(__file__)}/resnet_50.pth")
+        f"{os.path.dirname(__file__)}/resnet_50_const.pth")
     HeavyResnet = (
         ModelTypes.Resnet101,
         "https://drive.google.com/uc?id=1dkN2RDT6CAU4eWyjDIVJzxnAkwErvSWo",
         f"{os.path.dirname(__file__)}/resnet_101.pth")
+    MobileSmall = (
+        ModelTypes.MobileSmall,
+        "",
+        f"{os.path.dirname(__file__)}/mobile_small.pth"
+    )
 
 EMOTION_DICT = {
     0: 'Neutral',
